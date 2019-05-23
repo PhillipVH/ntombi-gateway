@@ -1,6 +1,14 @@
-from flask import Flask, request, abort
+import json
 
+from flask import Flask, request, abort
+from kafka import KafkaProducer
+
+
+# Default Flask configuration
 app = Flask(__name__)
+
+# Kafka producer configuration
+producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
 @app.route('/', methods=['POST'])
@@ -33,6 +41,7 @@ def process_event(event):
     If this succeeds, events are dispatched to an appropriate handler, determined
     by the type field.
     """
+
     # Extract the required parameters from the request body
     id = event.get('id')
     token = event.get('token')
@@ -45,6 +54,10 @@ def process_event(event):
     # Authenticate the dispenser against our database of tokens.
     if not permitted(event['id'], event['token']):
         abort(401)
+
+    # Send the event to the dispensers Kafka topic
+    # TODO Topic for startup, dispense, battery level, refill request
+    producer.send('dispensers', event)
 
 
 if __name__ == '__main__':
