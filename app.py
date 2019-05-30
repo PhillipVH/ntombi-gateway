@@ -1,13 +1,16 @@
 import json
 
 from flask import Flask, request, abort, render_template
+from flask_cors import CORS
+
 from kafka import KafkaProducer
 
 # Default Flask configuration
 app = Flask(__name__)
+CORS(app)
 
 # Kafka producer configuration
-producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+#producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 
 @app.route('/', methods=['POST', 'GET'])
@@ -61,7 +64,7 @@ def process_event(event):
         abort(400)
 
     # Message type must be on the allowed types
-    legal_types = ['STARTUP', 'DISPENSE', 'BATTERY', 'REFILL']
+    legal_types = ['STARTUP', 'DISPENSE', 'REFILL', 'REFILLED', 'EMPTY']
     if type not in legal_types:
         app.logger.warn('Request rejected: Invalid event type')
         abort(400)
@@ -80,6 +83,8 @@ def process_event(event):
         handle_refill_request(event)
     elif type == 'REFILLED':
         handle_refilled(event)
+    elif type == 'EMPTY':
+        handle_empty(event)
 
     # Send the event to the dispensers Kafka topic
     # TODO Topic for startup, dispense, battery level, refill request
@@ -104,6 +109,9 @@ def handle_refill_request(event):
 def handle_refilled(event):
     app.logger.info('Processing REFILLED event: ' + str(event))
 
+def handle_empty(event):
+    app.logger.info('Processing EMPTY event: ' + str(event))
+
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True, host='0.0.0.0')
