@@ -139,6 +139,12 @@ def handle_startup(event):
 
 def handle_dispense(event):
     app.logger.info('Processing DISPENSE event: ' + str(event))
+
+    # Update the dispensed count in the database
+    dispenser = Dispenser.query.filter_by(id=event['id']).first()
+    dispenser.dispensed = dispenser.dispensed + 1
+    db.session.commit()
+
     return
 
 
