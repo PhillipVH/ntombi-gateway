@@ -1,16 +1,45 @@
-import json
-
+# Flask related imports
 from flask import Flask, request, abort, render_template
 from flask_cors import CORS
 
+# Kafka related imports
+import json
 from kafka import KafkaProducer
+
+# SQLAlchemy related imports
+from flask_sqlalchemy import SQLAlchemy
 
 # Default Flask configuration
 app = Flask(__name__)
+
+# Enable CORS
 CORS(app)
 
+# Configure Flask-SQLAlchemy
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+db = SQLAlchemy(app)
+
+
 # Kafka producer configuration
-#producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+# producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+
+class Dispenser(db.Model):
+    """
+    A model for dispensers out in the wild. Each dispenser has associated with it
+    an ID, a name, a total capacity, and a number of already dispensed items.
+    """
+    __tablename__ = 'dispensers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    capacity = db.Column(db.Integer)
+    dispensed = db.Column(db.Integer)
+
+    def __init__(self, id, name, capacity, dispensed):
+        self.id = id
+        self.name = name
+        self.capacity = capacity
+        self.dispensed = dispensed
 
 
 @app.route('/', methods=['POST', 'GET'])
@@ -26,7 +55,8 @@ def index():
         process_event(request.get_json())
         return ''
     else:
-        return render_template('index.html')
+        dispensers = Dispenser.query.all()
+        return render_template('index.html', dispensers=dispensers)
 
 
 def permitted(id, token):
@@ -93,6 +123,17 @@ def process_event(event):
 
 def handle_startup(event):
     app.logger.info('Processing STARTUP event: ' + str(event))
+
+    # Create a new dispenser object to mirror the initial state of the dispenser
+    new_dispenser = Dispenser(event['id'], 'Another Dispenser', 20, 0)
+    db.session.add(new_dispenser)
+    db.session.commit()
+
+    # Retrieve and log all the dispensers for validation purposes
+    all_dispensers = db.session.query(Dispenser).all()
+    for dispenser in all_dispensers:
+        print(f'ID: {dispenser.id} Name: {dispenser.name}')
+
     return
 
 
@@ -108,6 +149,7 @@ def handle_refill_request(event):
 
 def handle_refilled(event):
     app.logger.info('Processing REFILLED event: ' + str(event))
+
 
 def handle_empty(event):
     app.logger.info('Processing EMPTY event: ' + str(event))

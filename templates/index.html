@@ -1,3 +1,14 @@
 <h1>ntombi. dispenser overview</h1>
 
-{{ "This will eventually display the current status of the registered dispensers" }}
+<ul>
+    {% for dispenser in dispensers %}
+        <li>
+            <span style="font-weight: bold;">ID:</span> {{ dispenser.id }} <br>
+            <span style="font-weight: bold;">Name:</span> {{ dispenser.name }} <br>
+            <span style="font-weight: bold;">Capacity:</span> {{ dispenser.capacity }} <br>
+            <span style="font-weight: bold;">Remaining:</span> {{ dispenser.capacity - dispenser.dispensed }} <br>
+        </li>
+    {% endfor %}
+</ul>
+
+
